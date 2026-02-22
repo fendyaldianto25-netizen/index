@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PI WELDING DASHBOARD</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        .card {
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .dark-mode {
+            background-color: #111827;
+        }
+        
+        .light-mode {
+            background: linear-gradient(to bottom right, #f8fafc, #f1f5f9);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .priority-badge {
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            padding: 12px 24px;
+            text-align: left;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bar {
+            transition: all 0.3s ease;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .detail-modal {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* Firebase status indicator */
+        .firebase-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .firebase-connected {
+            background-color: #10b981;
+            color: white;
+        }
+        .firebase-disconnected {
+            background-color: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body class="light-mode" id="body">
+    <!-- Firebase Status Indicator -->
+    <div id="firebase-status" class="firebase-status firebase-disconnected" style="display:none;">
+        <div class="w-2 h-2 rounded-full" id="status-dot" style="background-color: white;"></div>
+        <span id="status-text">Connecting...</span>
+    </div>
+
+    <div class="min-h-screen p-6" id="main-container">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border-l-4 border-blue-600" id="header-card">
+                <div class="flex justify-between items-center flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 mb-2" id="main-title">PI WELDING DASHBOARD</h1>
+                        <p class="text-gray-600" id="subtitle">Real-time monitoring and problem tracking system</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="toggleDarkMode()" class="bg-gray-200 hover:bg-gray-300 p-3 rounded-lg transition-all" id="theme-toggle">
+                            <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                            <svg id="sun-icon" style="display:none;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                        </button>
+                        <button onclick="showImportModal()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span>Import Excel</span>
+                        </button>
+                        <button onclick="showAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all shadow-md hover:shadow-lg">
+                            <span>+ Add Problem</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white card rounded-xl shadow-md p-6 border-l-4 border-red-500" id="kpi-problems">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600 mb-1">Total Problems</p>
+                            <p class="text-3xl font-bold text-gray-900" id="total-problems">8</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white card rounded-xl shadow-md p-6 border-l-4 border-yellow-500" id="kpi-defect">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600 mb-1">Defect Rate</p>
+                            <p class="text-3xl font-bold text-gray-900" id="defect-rate">6.64%</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                            <polyline points="17 6 23 6 23 12"></polyline>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white card rounded-xl shadow-md p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-all" id="kpi-ok" onclick="showVendorDetail()">
+                    <div class="flex items-center justify-between">
+                        <div class="w-full">
+                            <p class="text-sm text-gray-600 mb-1">Worst Vendor</p>
+                            <p class="text-2xl font-bold text-gray-900" id="worst-vendor">-</p>
+                            <p class="text-xs text-gray-500 mt-1" id="worst-vendor-count">-</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Click to see details →</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white card rounded-xl shadow-md p-6 border-l-4 border-orange-500 cursor-pointer hover:shadow-lg transition-all" id="kpi-ng" onclick="showPACSDetail()">
+                    <div class="flex items-center justify-between">
+                        <div class="w-full">
+                            <p class="text-sm text-gray-600 mb-1">Total PACS</p>
+                            <p class="text-3xl font-bold text-gray-900" id="total-pacs">0</p>
+                            <p class="text-xs text-gray-500 mt-1">Click to see details →</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-xl shadow-md p-6 mb-6" id="filters-card">
+                <div class="flex items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-900">Filters</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <input type="text" id="search-input" onkeyup="filterTable()" placeholder="Search part no, name..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    
+                    <select id="month-filter" onchange="filterTable()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">All (1 Year)</option>
+                        <option value="01">January</option>
+                        <option value="02">February</option>
+                        <option value="03">March</option>
+                        <option value="04">April</option>
+                        <option value="05">May</option>
+                        <option value="06">June</option>
+                        <option value="07">July</option>
+                        <option value="08">August</option>
+                        <option value="09">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                    
+                    <select id="status-filter" onchange="filterTable()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">All Status</option>
+                        <option value="ANALISA">ANALISA</option>
+                        <option value="CONTROL">CONTROL</option>
+                        <option value="SELESAI">SELESAI</option>
+                    </select>
+
+                    <select id="vendor-filter" onchange="filterTable()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">All Vendors</option>
+                        <option value="PT.TCH">PT.TCH</option>
+                        <option value="PT.WIRA">PT.WIRA</option>
+                        <option value="PT.SUP">PT.SUP</option>
+                        <option value="PT.YTK">PT.YTK</option>
+                        <option value="PT.MKJ">PT.MKJ</option>
+                        <option value="PT.IMMAT">PT.IMMAT</option>
+                    </select>
+
+                    <select id="pic-filter" onchange="filterTable()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">All PICs</option>
+                        <option value="ROHIM">ROHIM</option>
+                        <option value="FENDY">FENDY</option>
+                        <option value="SIGIT">SIGIT</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-md p-6" id="status-chart-card">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Problem Status Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6" id="vendor-chart-card">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Defect by Vendor</h3>
+                    <div class="chart-container">
+                        <canvas id="vendorChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6" id="part-chart-card">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Defect by Part Number</h3>
+                    <div class="chart-container">
+                        <canvas id="partChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Problem Table -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden" id="table-card">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900">Problem Details</h3>
+                        <div class="relative">
+                            <button onclick="toggleExportMenu()" id="export-btn" class="text-blue-600 hover:text-blue-800 flex items-center gap-2 px-4 py-2 border border-blue-600 rounded-lg hover:bg-blue-50">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Export
+                            </button>
+                            <div id="export-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10" style="display: none;">
+                                <div class="py-1">
+                                    <button onclick="exportToExcel()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                        <span class="text-gray-700">Download Excel</span>
+                                    </button>
+                                    <button onclick="exportToPDF()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                        <span class="text-gray-700">Download PDF</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="problems-table">
+                        <thead class="bg-gray-50" id="table-header">
+                            <tr>
+                                <th>Date</th>
+                                <th>Part No</th>
+                                <th>Part Name</th>
+                                <th>Vendor</th>
+                                <th>Problem</th>
+                                <th>Location</th>
+                                <th>OK/NG</th>
+                                <th>Priority</th>
+                                <th>PIC</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Problem Modal -->
+    <div id="add-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6" id="modal-content">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Add New Problem</h3>
+            <form id="add-form" class="space-y-4" onsubmit="addNewProblem(event)">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="date" id="input-date" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                    
+                    <!-- Part No with autocomplete -->
+                    <div>
+                        <input 
+                            type="text" 
+                            id="input-partno" 
+                            list="partno-list"
+                            placeholder="Part No" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg w-full" 
+                            oninput="autoFillPartData(this.value)"
+                            required>
+                        <datalist id="partno-list"></datalist>
+                    </div>
+                    
+                    <!-- Part Name with autocomplete -->
+                    <input 
+                        type="text" 
+                        id="input-partname" 
+                        list="partname-list"
+                        placeholder="Part Name" 
+                        class="px-4 py-2 border border-gray-300 rounded-lg col-span-2" 
+                        required>
+                    <datalist id="partname-list"></datalist>
+                    
+                    <!-- Vendor with autocomplete -->
+                    <div>
+                        <input 
+                            type="text" 
+                            id="input-vendor" 
+                            list="vendor-list"
+                            placeholder="Vendor (e.g., PT.ABC)" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg w-full" 
+                            required>
+                        <datalist id="vendor-list"></datalist>
+                    </div>
+                    
+                    <input type="text" id="input-problem" placeholder="Problem" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                    <input type="text" id="input-location" placeholder="Location" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                    <input type="number" id="input-ok" placeholder="OK Quantity" class="px-4 py-2 border border-gray-300 rounded-lg" min="0" required>
+                    <input type="number" id="input-ng" placeholder="NG Quantity" class="px-4 py-2 border border-gray-300 rounded-lg" min="0" required>
+                    
+                    <!-- PIC with autocomplete -->
+                    <div>
+                        <input 
+                            type="text" 
+                            id="input-pic" 
+                            list="pic-list"
+                            placeholder="PIC" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg w-full" 
+                            required>
+                        <datalist id="pic-list"></datalist>
+                    </div>
+                    
+                    <select id="input-status" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                        <option value="">Select Status</option>
+                        <option value="ANALISA">ANALISA</option>
+                        <option value="CONTROL">CONTROL</option>
+                        <option value="SELESAI">SELESAI</option>
+                    </select>
+                    <select id="input-action" class="px-4 py-2 border border-gray-300 rounded-lg col-span-2" required>
+                        <option value="">Select Action</option>
+                        <option value="REPAIR">REPAIR</option>
+                        <option value="SORTIR">SORTIR</option>
+                        <option value="REPLACE">REPLACE</option>
+                        <option value="PACS">PACS</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="hideAddModal()" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Problem</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="display: none; z-index: 9999;">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full detail-modal" id="detail-modal-content">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white">
+                <h3 class="text-xl font-bold text-gray-900" id="detail-modal-title">Details</h3>
+                <button onclick="hideDetailModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Part No</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Part Name</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Problem</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Vendor</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">PIC</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-modal-body" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 flex justify-end">
+                <button onclick="hideDetailModal()" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Excel Modal -->
+    <div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6" id="import-modal-content">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Import Problems from Excel</h3>
+            
+            <div class="mb-6">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <input type="file" id="excel-file-input" accept=".xlsx,.xls" class="hidden" onchange="handleExcelUpload(event)">
+                    <button onclick="document.getElementById('excel-file-input').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg">
+                        Choose Excel File
+                    </button>
+                    <p class="text-sm text-gray-500 mt-2">or drag and drop</p>
+                    <p class="text-xs text-gray-400 mt-1">XLSX, XLS up to 10MB</p>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h4 class="font-semibold text-blue-900 mb-2">📋 Excel Format Requirements:</h4>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>• <strong>Date</strong> - Format: YYYY-MM-DD atau DD/MM/YYYY</li>
+                    <li>• <strong>Part No</strong> - Nomor part (required)</li>
+                    <li>• <strong>Part Name</strong> - Nama part (required)</li>
+                    <li>• <strong>Vendor</strong> - Nama vendor (required)</li>
+                    <li>• <strong>Problem</strong> - Deskripsi masalah (required)</li>
+                    <li>• <strong>Location</strong> - Lokasi (required)</li>
+                    <li>• <strong>OK</strong> - Jumlah OK (number)</li>
+                    <li>• <strong>NG</strong> - Jumlah NG (number)</li>
+                    <li>• <strong>PIC</strong> - Person in charge (required)</li>
+                    <li>• <strong>Status</strong> - ANALISA / CONTROL / SELESAI</li>
+                    <li>• <strong>Action</strong> - REPAIR / SORTIR / REPLACE / PACS</li>
+                </ul>
+            </div>
+
+            <div id="import-preview" style="display: none;" class="mb-4">
+                <h4 class="font-semibold text-gray-900 mb-2">Preview Data:</h4>
+                <div class="max-h-60 overflow-y-auto border rounded-lg">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Part No</th>
+                                <th class="px-3 py-2 text-left">Part Name</th>
+                                <th class="px-3 py-2 text-left">Vendor</th>
+                                <th class="px-3 py-2 text-left">Problem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="import-preview-body">
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-sm text-gray-600 mt-2">Total: <span id="import-count" class="font-bold">0</span> rows</p>
+            </div>
+
+            <div class="flex gap-3 justify-end">
+                <button type="button" onclick="hideImportModal()" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button id="import-confirm-btn" onclick="confirmImport()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" style="display: none;">
+                    Import <span id="import-btn-count"></span> Problems
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Problem Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6" id="edit-modal-content">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Edit Problem</h3>
+            <form id="edit-form" class="space-y-4" onsubmit="updateProblem(event)">
+                <input type="hidden" id="edit-index">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="date" id="edit-date" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                    
+                    <!-- Part No with autocomplete -->
+                    <div>
+                        <input 
+                            type="text" 
+                            id="edit-partno" 
+                            list="partno-list"
+                            placeholder="Part No" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg w-full" 
+                            oninput="autoFillPartDataEdit(this.value)"
+                            required>
+                    </div>
+                    
+                    <!-- Part Name with autocomplete -->
+                    <input 
+                        type="text" 
+                        id="edit-partname" 
+                        list="partname-list"
+                        placeholder="Part Name" 
+                        class="px-4 py-2 border border-gray-300 rounded-lg col-span-2" 
+                        required>
+                    
+                    <!-- Vendor with autocomplete -->
+                    <div>
+                        <input 
+                            type="text" 
+                            id="edit-vendor" 
+                            list="vendor-list"
+                            placeholder="Vendor" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg w-full" 
+                            required>
+                    </div>
+                    
+                    <input type="text" id="edit-problem" placeholder="Problem" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                    <input type="text" id="edit-location" placeholder="Location" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                    <input type="number" id="edit-ok" placeholder="OK Quantity" class="px-4 py-2 border border-gray-300 rounded-lg" min="0" required>
+                    <input type="number" id="edit-ng" placeholder="NG Quantity" class="px-4 py-2 border border-gray-300 rounded-lg" min="0" required>
+                    
+                    <!-- PIC with autocomplete -->
+                    <div>
+                        <input 
+                            type="text" 
+                            id="edit-pic" 
+                            list="pic-list"
+                            placeholder="PIC" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg w-full" 
+                            required>
+                    </div>
+                    
+                    <select id="edit-status" class="px-4 py-2 border border-gray-300 rounded-lg" required>
+                        <option value="">Select Status</option>
+                        <option value="ANALISA">ANALISA</option>
+                        <option value="CONTROL">CONTROL</option>
+                        <option value="SELESAI">SELESAI</option>
+                    </select>
+                    <select id="edit-action" class="px-4 py-2 border border-gray-300 rounded-lg col-span-2" required>
+                        <option value="">Select Action</option>
+                        <option value="REPAIR">REPAIR</option>
+                        <option value="SORTIR">SORTIR</option>
+                        <option value="REPLACE">REPLACE</option>
+                        <option value="PACS">PACS</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="hideEditModal()" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Update Problem</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <script>
+        // ============================================
+        // 🔧 PARTS MASTER DATA (loaded from JSON)
+        // ============================================
+        let partsMasterData = {
+            parts: [],
+            vendors: [],
+            pics: ["ROHIM", "SIGIT", "FENDY"]
+        };
+
+        // Load parts master data from JSON file
+        async function loadPartsMaster() {
+            try {
+                const response = await fetch('parts_master.json');
+                if (response.ok) {
+                    partsMasterData = await response.json();
+                    console.log('✅ Parts master loaded:', {
+                        parts: partsMasterData.parts.length,
+                        vendors: partsMasterData.vendors.length,
+                        pics: partsMasterData.pics.length
+                    });
+                } else {
+                    console.warn('⚠️ parts_master.json not found, using default data');
+                }
+            } catch (error) {
+                console.warn('⚠️ Could not load parts master:', error.message);
+            }
+        }
+
+        // ============================================
+        // 🔥 FIREBASE CONFIGURATION
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-AajNJvw7agGweRv8Py0c7x82Vo_uCog",
+            authDomain: "pi-welding-dashboard.firebaseapp.com",
+            databaseURL: "https://pi-welding-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "pi-welding-dashboard",
+            storageBucket: "pi-welding-dashboard.firebasestorage.app",
+            messagingSenderId: "926901068232",
+            appId: "1:926901068232:web:e4537bc599e895d8bda0fd"
+        };
+
+        // Initialize Firebase
+        let database;
+        let isFirebaseConfigured = false;
+
+        function updateFirebaseStatus(connected, message) {
+            const statusEl = document.getElementById('firebase-status');
+            const textEl = document.getElementById('status-text');
+            const dotEl = document.getElementById('status-dot');
+            
+            statusEl.style.display = 'flex';
+            textEl.textContent = message;
+            
+            if (connected) {
+                statusEl.className = 'firebase-status firebase-connected';
+                dotEl.style.animation = 'pulse 2s infinite';
+            } else {
+                statusEl.className = 'firebase-status firebase-disconnected';
+                dotEl.style.animation = 'none';
+            }
+        }
+
+        try {
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                isFirebaseConfigured = true;
+                updateFirebaseStatus(true, '🔥 Firebase Connected');
+                console.log('✅ Firebase AKTIF - Data publik & realtime!');
+            } else {
+                updateFirebaseStatus(false, '⚠️ Firebase Not Configured');
+                console.error('❌ FIREBASE BELUM DIKONFIGURASI!');
+                console.log('📝 Edit firebaseConfig dengan config Anda');
+                console.log('⚠️ Sementara pakai localStorage - data TIDAK sync antar device');
+            }
+        } catch (error) {
+            updateFirebaseStatus(false, '❌ Firebase Error');
+            console.error('❌ Firebase error:', error);
+            isFirebaseConfigured = false;
+        }
+
+        // ============================================
+        // DATA MANAGEMENT
+        // ============================================
+        
+        const initialProblemsData = [
+            { date: '2026-02-15', partNo: '14150-23K00', partName: 'PIPE EXH COMP', vendor: 'PT.TCH', problem: 'MEMBAL', location: 'LINE WELDING', ok: 10, ng: 20, pic: 'ROHIM', status: 'ANALISA', action: 'REPAIR' },
+            { date: '2026-02-16', partNo: '14150-23K01', partName: 'PIPE HEAD', vendor: 'PT.WIRA', problem: 'SPATER', location: 'LINE WELDING', ok: 600, ng: 5, pic: 'FENDY', status: 'SELESAI', action: 'SORTIR' },
+            { date: '2026-02-17', partNo: '14150-23K02', partName: 'TUBE CTR', vendor: 'PT.SUP', problem: 'CHAMFER', location: 'RECEIVING', ok: 120, ng: 6, pic: 'SIGIT', status: 'CONTROL', action: 'REPAIR' },
+            { date: '2026-02-18', partNo: '14150-23K03', partName: 'REINF 2 ENGINE', vendor: 'PT.SUP', problem: 'KARAT', location: 'ASSY', ok: 100, ng: 4, pic: 'ROHIM', status: 'ANALISA', action: 'REPLACE' },
+            { date: '2026-02-19', partNo: '14150-23K04', partName: 'TUBE REAR', vendor: 'PT.SUP', problem: 'KOTOR', location: 'PAINTING', ok: 78, ng: 23, pic: 'FENDY', status: 'SELESAI', action: 'PACS' },
+            { date: '2026-02-20', partNo: '14150-23K05', partName: 'BRACKET FOOTREST', vendor: 'PT.YTK', problem: 'PENYOK', location: 'LINE WELDING', ok: 90, ng: 10, pic: 'SIGIT', status: 'CONTROL', action: 'SORTIR' },
+            { date: '2026-02-21', partNo: '14150-23K06', partName: 'TUBE 11', vendor: 'PT.MKJ', problem: 'MISIING', location: 'LINE WELDING', ok: 120, ng: 11, pic: 'ROHIM', status: 'ANALISA', action: 'PACS' },
+            { date: '2026-02-22', partNo: '14150-23K07', partName: 'PIPE EXH COMP', vendor: 'PT.IMMAT', problem: 'NIT TIDAK ADA', location: 'LINE WELDING', ok: 120, ng: 1, pic: 'FENDY', status: 'SELESAI', action: 'PACS' }
+        ];
+
+        let problemsData = [...initialProblemsData];
+        let darkMode = false;
+        let currentFilteredData = problemsData;
+
+        // Load data
+        async function loadData() {
+            if (isFirebaseConfigured) {
+                return new Promise((resolve) => {
+                    const dbRef = database.ref('weldingProblems');
+                    dbRef.once('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data && Array.isArray(data)) {
+                            console.log('🔥 Loaded', data.length, 'from Firebase - SHARED DATA');
+                            resolve(data);
+                        } else {
+                            console.log('📦 Init Firebase dengan data awal');
+                            dbRef.set(initialProblemsData);
+                            resolve([...initialProblemsData]);
+                        }
+                    }, (error) => {
+                        console.error('Firebase read error:', error);
+                        resolve([...initialProblemsData]);
+                    });
+                });
+            } else {
+                const saved = localStorage.getItem('weldingProblemsData');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    console.log('💾 Loaded from localStorage - LOCAL ONLY');
+                    return parsed;
+                }
+                return [...initialProblemsData];
+            }
+        }
+
+        // Save data
+        async function saveData() {
+            if (isFirebaseConfigured) {
+                try {
+                    await database.ref('weldingProblems').set(problemsData);
+                    console.log('🔥 Saved to Firebase - ALL DEVICES UPDATE!');
+                    updateFirebaseStatus(true, '✅ Data Saved to Cloud');
+                    setTimeout(() => {
+                        updateFirebaseStatus(true, '🔥 Firebase Connected');
+                    }, 2000);
+                } catch (error) {
+                    console.error('Firebase save error:', error);
+                    localStorage.setItem('weldingProblemsData', JSON.stringify(problemsData));
+                }
+            } else {
+                localStorage.setItem('weldingProblemsData', JSON.stringify(problemsData));
+                console.log('💾 Saved locally - NOT synced');
+            }
+        }
+
+        // Realtime listener
+        function startRealtimeSync() {
+            if (isFirebaseConfigured) {
+                console.log('🔄 Starting realtime sync...');
+                const dbRef = database.ref('weldingProblems');
+                
+                dbRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data && Array.isArray(data)) {
+                        problemsData = data;
+                        currentFilteredData = problemsData;
+                        
+                        renderTable(problemsData);
+                        updateKPIs(problemsData);
+                        updateChartsWithFilteredData(problemsData);
+                        updateFilterDropdowns();
+                        
+                        console.log('🔄 REALTIME UPDATE:', problemsData.length, 'problems');
+                    }
+                }, (error) => {
+                    console.error('Realtime listener error:', error);
+                });
+            }
+        }
+
+        // Initialize
+        window.onload = async function() {
+            // Load parts master data first
+            await loadPartsMaster();
+            
+            // Then load problem data
+            problemsData = await loadData();
+            currentFilteredData = problemsData;
+            
+            renderTable(problemsData);
+            updateKPIs(problemsData);
+            createCharts();
+            
+            document.getElementById('month-filter').value = 'ALL';
+            console.log('📊 Dashboard loaded:', problemsData.length, 'problems');
+            
+            // Populate datalists for autocomplete
+            populateDataLists();
+            
+            startRealtimeSync();
+        };
+
+        // ============================================
+        // AUTOCOMPLETE FUNCTIONS
+        // ============================================
+        
+        function populateDataLists() {
+            // Part No list
+            const partnoList = document.getElementById('partno-list');
+            partsMasterData.parts.forEach(part => {
+                const option = document.createElement('option');
+                option.value = part.partNo;
+                partnoList.appendChild(option);
+            });
+
+            // Part Name list
+            const partnameList = document.getElementById('partname-list');
+            partsMasterData.parts.forEach(part => {
+                const option = document.createElement('option');
+                option.value = part.partName;
+                partnameList.appendChild(option);
+            });
+
+            // Vendor list
+            const vendorList = document.getElementById('vendor-list');
+            partsMasterData.vendors.forEach(vendor => {
+                const option = document.createElement('option');
+                option.value = vendor;
+                vendorList.appendChild(option);
+            });
+
+            // PIC list
+            const picList = document.getElementById('pic-list');
+            partsMasterData.pics.forEach(pic => {
+                const option = document.createElement('option');
+                option.value = pic;
+                picList.appendChild(option);
+            });
+
+            console.log('✅ Datalists populated:', {
+                parts: partsMasterData.parts.length,
+                vendors: partsMasterData.vendors.length,
+                pics: partsMasterData.pics.length
+            });
+        }
+
+        // Auto-fill Part Name and Vendor when Part No is selected (Add Modal)
+        function autoFillPartData(partNo) {
+            const part = partsMasterData.parts.find(p => p.partNo === partNo);
+            if (part) {
+                document.getElementById('input-partname').value = part.partName;
+                document.getElementById('input-vendor').value = part.vendor;
+                document.getElementById('input-pic').value = part.pic;
+                console.log('✅ Auto-filled:', part.partNo, '→', part.partName);
+            }
+        }
+
+        // Auto-fill Part Name and Vendor when Part No is selected (Edit Modal)
+        function autoFillPartDataEdit(partNo) {
+            const part = partsMasterData.parts.find(p => p.partNo === partNo);
+            if (part) {
+                document.getElementById('edit-partname').value = part.partName;
+                document.getElementById('edit-vendor').value = part.vendor;
+                document.getElementById('edit-pic').value = part.pic;
+                console.log('✅ Auto-filled (edit):', part.partNo, '→', part.partName);
+            }
+        }
+
+        // [REST OF THE JAVASCRIPT CODE - Dark Mode, Render Table, KPIs, Charts, Modals, Export functions]
+        // Continuing the script with the complete dashboard functionality...
+        
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            const body = document.getElementById('body');
+            const moonIcon = document.getElementById('moon-icon');
+            const sunIcon = document.getElementById('sun-icon');
+            
+            if (darkMode) {
+                body.classList.remove('light-mode');
+                body.classList.add('dark-mode');
+                document.getElementById('main-container').style.color = '#f9fafb';
+                moonIcon.style.display = 'none';
+                sunIcon.style.display = 'block';
+                applyDarkModeStyles();
+            } else {
+                body.classList.remove('dark-mode');
+                body.classList.add('light-mode');
+                document.getElementById('main-container').style.color = '#111827';
+                moonIcon.style.display = 'block';
+                sunIcon.style.display = 'none';
+                removeDarkModeStyles();
+            }
+        }
+
+        function applyDarkModeStyles() {
+            const cards = ['header-card', 'kpi-problems', 'kpi-defect', 'kpi-ok', 'kpi-ng', 'filters-card', 'status-chart-card', 'vendor-chart-card', 'part-chart-card', 'table-card', 'modal-content'];
+            cards.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.backgroundColor = '#1f2937';
+                    el.style.color = '#f9fafb';
+                }
+            });
+            
+            document.getElementById('main-title').style.color = '#f9fafb';
+            document.getElementById('subtitle').style.color = '#9ca3af';
+            
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.style.backgroundColor = '#374151';
+                input.style.borderColor = '#4b5563';
+                input.style.color = '#f9fafb';
+            });
+            
+            document.getElementById('table-header').style.backgroundColor = '#374151';
+            document.getElementById('table-body').style.backgroundColor = '#1f2937';
+        }
+
+        function removeDarkModeStyles() {
+            const cards = ['header-card', 'kpi-problems', 'kpi-defect', 'kpi-ok', 'kpi-ng', 'filters-card', 'status-chart-card', 'vendor-chart-card', 'part-chart-card', 'table-card', 'modal-content'];
+            cards.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.backgroundColor = '#ffffff';
+                    el.style.color = '#111827';
+                }
+            });
+            
+            document.getElementById('main-title').style.color = '#111827';
+            document.getElementById('subtitle').style.color = '#6b7280';
+            
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.style.backgroundColor = '#ffffff';
+                input.style.borderColor = '#d1d5db';
+                input.style.color = '#111827';
+            });
+            
+            document.getElementById('table-header').style.backgroundColor = '#f9fafb';
+            document.getElementById('table-body').style.backgroundColor = '#ffffff';
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            const sortedData = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedData.forEach((item, index) => {
+                // Find original index in problemsData
+                const originalIndex = problemsData.findIndex(p => 
+                    p.date === item.date && 
+                    p.partNo === item.partNo && 
+                    p.vendor === item.vendor &&
+                    p.problem === item.problem
+                );
+                
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${new Date(item.date).toLocaleDateString('id-ID')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${item.partNo}</td>
+                    <td class="px-6 py-4 text-sm">${item.partName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${item.vendor}</td>
+                    <td class="px-6 py-4 text-sm">${item.problem}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${item.location}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="text-green-600 font-semibold">${item.ok}</span> / 
+                        <span class="text-red-600 font-semibold">${item.ng}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${getPriorityBadge(item.ng, item.ok + item.ng)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${item.pic}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${getStatusBadge(item.status)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${item.action}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <div class="flex gap-2">
+                            <button onclick="editProblem(${originalIndex})" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteProblem(${originalIndex})" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getPriorityBadge(ng, total) {
+            const rate = (ng / total) * 100;
+            if (rate > 15) return '<span class="priority-badge" style="background-color: #ef4444;">HIGH</span>';
+            if (rate > 5) return '<span class="priority-badge" style="background-color: #f59e0b;">MED</span>';
+            return '<span class="priority-badge" style="background-color: #10b981;">LOW</span>';
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'SELESAI': 'bg-green-100 text-green-800',
+                'ANALISA': 'bg-red-100 text-red-800',
+                'CONTROL': 'bg-yellow-100 text-yellow-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getStatusBadge(status) {
+            const colors = {
+                'SELESAI': 'background-color: #d1fae5; color: #065f46;',
+                'ANALISA': 'background-color: #fee2e2; color: #991b1b;',
+                'CONTROL': 'background-color: #fef3c7; color: #92400e;'
+            };
+            return `<span class="status-badge" style="${colors[status]}">${status}</span>`;
+        }
+
+        function updateKPIs(data) {
+            const totalOK = data.reduce((sum, item) => sum + item.ok, 0);
+            const totalNG = data.reduce((sum, item) => sum + item.ng, 0);
+            const defectRate = totalOK + totalNG > 0 ? ((totalNG / (totalOK + totalNG)) * 100).toFixed(2) : '0.00';
+            
+            document.getElementById('total-problems').textContent = data.length;
+            document.getElementById('defect-rate').textContent = defectRate + '%';
+            
+            if (data.length > 0) {
+                const vendorFrequency = {};
+                data.forEach(item => {
+                    vendorFrequency[item.vendor] = (vendorFrequency[item.vendor] || 0) + 1;
+                });
+                
+                const worstVendor = Object.entries(vendorFrequency)
+                    .sort((a, b) => b[1] - a[1])[0];
+                
+                document.getElementById('worst-vendor').textContent = worstVendor[0];
+                document.getElementById('worst-vendor-count').textContent = `${worstVendor[1]} problem${worstVendor[1] > 1 ? 's' : ''}`;
+            } else {
+                document.getElementById('worst-vendor').textContent = '-';
+                document.getElementById('worst-vendor-count').textContent = 'No data';
+            }
+            
+            const pacsCount = data.filter(item => item.action === 'PACS').length;
+            document.getElementById('total-pacs').textContent = pacsCount;
+        }
+
+        function filterTable() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const monthFilter = document.getElementById('month-filter').value;
+            const statusFilter = document.getElementById('status-filter').value;
+            const vendorFilter = document.getElementById('vendor-filter').value;
+            const picFilter = document.getElementById('pic-filter').value;
+            
+            let filtered = problemsData.filter(item => {
+                const matchSearch = item.partNo.toLowerCase().includes(search) || 
+                                  item.partName.toLowerCase().includes(search) ||
+                                  item.problem.toLowerCase().includes(search);
+                
+                const itemMonth = new Date(item.date).getMonth() + 1;
+                const itemMonthStr = itemMonth.toString().padStart(2, '0');
+                const matchMonth = monthFilter === 'ALL' || itemMonthStr === monthFilter;
+                
+                const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
+                const matchVendor = vendorFilter === 'ALL' || item.vendor === vendorFilter;
+                const matchPIC = picFilter === 'ALL' || item.pic === picFilter;
+                
+                return matchSearch && matchMonth && matchStatus && matchVendor && matchPIC;
+            });
+            
+            currentFilteredData = filtered;
+            renderTable(filtered);
+            updateKPIs(filtered);
+            updateChartsWithFilteredData(filtered);
+        }
+
+        function createCharts() {
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            window.statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ANALISA', 'CONTROL', 'SELESAI'],
+                    datasets: [{
+                        data: [3, 2, 3],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.parsed + ' problems';
+                                }
+                            }
+                        },
+                        datalabels: {
+                            color: '#fff',
+                            font: {
+                                weight: 'bold',
+                                size: 14
+                            },
+                            formatter: function(value, context) {
+                                return value > 0 ? value : '';
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+
+            const vendorCtx = document.getElementById('vendorChart').getContext('2d');
+            window.vendorChart = new Chart(vendorCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Problem Frequency',
+                        data: [],
+                        backgroundColor: '#ef4444'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Problems: ' + context.parsed.y;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const partCtx = document.getElementById('partChart').getContext('2d');
+            window.partChart = new Chart(partCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Problem Frequency',
+                        data: [],
+                        backgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const index = context[0].dataIndex;
+                                    const partInfo = window.partChartData[index];
+                                    return [partInfo.partNo, partInfo.partName];
+                                },
+                                label: function(context) {
+                                    return 'Problems: ' + context.parsed.y;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'center',
+                            rotation: -90,
+                            color: '#ffffff',
+                            font: {
+                                size: 11,
+                                weight: 'bold'
+                            },
+                            formatter: function(value, context) {
+                                if (value === 0) return '';
+                                const index = context.dataIndex;
+                                const partInfo = window.partChartData[index];
+                                return partInfo.displayName;
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+
+            updateChartsWithFilteredData(problemsData);
+        }
+
+        function updateChartsWithFilteredData(data) {
+            const analisaCount = data.filter(d => d.status === 'ANALISA').length;
+            const controlCount = data.filter(d => d.status === 'CONTROL').length;
+            const selesaiCount = data.filter(d => d.status === 'SELESAI').length;
+            
+            if (window.statusChart) {
+                window.statusChart.data.datasets[0].data = [analisaCount, controlCount, selesaiCount];
+                window.statusChart.update();
+            }
+            
+            const vendorFrequency = {};
+            data.forEach(item => {
+                vendorFrequency[item.vendor] = (vendorFrequency[item.vendor] || 0) + 1;
+            });
+            
+            const sortedVendors = Object.entries(vendorFrequency)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6);
+            
+            if (window.vendorChart) {
+                if (sortedVendors.length > 0) {
+                    window.vendorChart.data.labels = sortedVendors.map(v => v[0]);
+                    window.vendorChart.data.datasets[0].data = sortedVendors.map(v => v[1]);
+                } else {
+                    window.vendorChart.data.labels = [];
+                    window.vendorChart.data.datasets[0].data = [];
+                }
+                window.vendorChart.update();
+            }
+
+            const partFrequency = {};
+            const partNames = {};
+            data.forEach(item => {
+                partFrequency[item.partNo] = (partFrequency[item.partNo] || 0) + 1;
+                partNames[item.partNo] = item.partName;
+            });
+            
+            const sortedParts = Object.entries(partFrequency)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6);
+            
+            if (window.partChart) {
+                if (sortedParts.length > 0) {
+                    window.partChartData = sortedParts.map(p => {
+                        const partNo = p[0];
+                        const partName = partNames[partNo];
+                        const displayName = partName.length > 12 ? partName.substring(0, 12) + '...' : partName;
+                        return {
+                            partNo: partNo,
+                            partName: partName,
+                            displayName: displayName,
+                            frequency: p[1]
+                        };
+                    });
+                    
+                    window.partChart.data.labels = window.partChartData.map(p => p.partNo);
+                    window.partChart.data.datasets[0].data = sortedParts.map(p => p[1]);
+                } else {
+                    window.partChartData = [];
+                    window.partChart.data.labels = [];
+                    window.partChart.data.datasets[0].data = [];
+                }
+                window.partChart.update();
+            }
+        }
+
+        function showAddModal() {
+            document.getElementById('add-modal').style.display = 'flex';
+            document.getElementById('input-date').valueAsDate = new Date();
+        }
+
+        function hideAddModal() {
+            document.getElementById('add-modal').style.display = 'none';
+            document.getElementById('add-form').reset();
+        }
+
+        window.hideDetailModal = function() {
+            document.getElementById('detail-modal').style.display = 'none';
+        };
+
+        window.showPACSDetail = function() {
+            try {
+                const pacsData = currentFilteredData.filter(item => item.action === 'PACS');
+                
+                if (pacsData.length === 0) {
+                    alert('No PACS data in selected period');
+                    return;
+                }
+
+                const monthFilter = document.getElementById('month-filter');
+                const monthValue = monthFilter.value;
+                const monthName = monthValue === 'ALL' ? 'All (1 Year)' : 
+                                 monthFilter.options[monthFilter.selectedIndex].text;
+                
+                document.getElementById('detail-modal-title').textContent = `PACS Details - ${monthName} (${pacsData.length} items)`;
+                
+                const tbody = document.getElementById('detail-modal-body');
+                tbody.innerHTML = '';
+                
+                pacsData.forEach((item) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="px-4 py-3 text-sm">${new Date(item.date).toLocaleDateString('id-ID')}</td>
+                        <td class="px-4 py-3 text-sm font-medium">${item.partNo}</td>
+                        <td class="px-4 py-3 text-sm">${item.partName}</td>
+                        <td class="px-4 py-3 text-sm">${item.problem}</td>
+                        <td class="px-4 py-3 text-sm">${item.vendor}</td>
+                        <td class="px-4 py-3 text-sm">${item.pic}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(item.status)}">
+                                ${item.status}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                document.getElementById('detail-modal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error in showPACSDetail:', error);
+                alert('Error showing PACS details: ' + error.message);
+            }
+        };
+
+        window.showVendorDetail = function() {
+            try {
+                const worstVendorName = document.getElementById('worst-vendor').textContent.trim();
+                
+                if (worstVendorName === '-' || worstVendorName === '') {
+                    alert('No vendor data in selected period');
+                    return;
+                }
+
+                const vendorData = currentFilteredData.filter(item => item.vendor === worstVendorName);
+                
+                const monthFilter = document.getElementById('month-filter');
+                const monthValue = monthFilter.value;
+                const monthName = monthValue === 'ALL' ? 'All (1 Year)' : 
+                                 monthFilter.options[monthFilter.selectedIndex].text;
+                
+                document.getElementById('detail-modal-title').textContent = `${worstVendorName} Problems - ${monthName} (${vendorData.length} items)`;
+                
+                const tbody = document.getElementById('detail-modal-body');
+                tbody.innerHTML = '';
+                
+                vendorData.forEach((item) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="px-4 py-3 text-sm">${new Date(item.date).toLocaleDateString('id-ID')}</td>
+                        <td class="px-4 py-3 text-sm font-medium">${item.partNo}</td>
+                        <td class="px-4 py-3 text-sm">${item.partName}</td>
+                        <td class="px-4 py-3 text-sm">${item.problem}</td>
+                        <td class="px-4 py-3 text-sm">${item.vendor}</td>
+                        <td class="px-4 py-3 text-sm">${item.pic}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(item.status)}">
+                                ${item.status}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                document.getElementById('detail-modal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error in showVendorDetail:', error);
+                alert('Error showing vendor details: ' + error.message);
+            }
+        };
+
+        function addNewProblem(event) {
+            event.preventDefault();
+            
+            const newProblem = {
+                date: document.getElementById('input-date').value,
+                partNo: document.getElementById('input-partno').value,
+                partName: document.getElementById('input-partname').value,
+                vendor: document.getElementById('input-vendor').value,
+                problem: document.getElementById('input-problem').value,
+                location: document.getElementById('input-location').value,
+                ok: parseInt(document.getElementById('input-ok').value),
+                ng: parseInt(document.getElementById('input-ng').value),
+                pic: document.getElementById('input-pic').value,
+                status: document.getElementById('input-status').value,
+                action: document.getElementById('input-action').value
+            };
+            
+            problemsData.push(newProblem);
+            saveData();
+            
+            currentFilteredData = problemsData;
+            renderTable(problemsData);
+            updateKPIs(problemsData);
+            updateChartsWithFilteredData(problemsData);
+            updateFilterDropdowns();
+            
+            hideAddModal();
+            showNotification(`Problem "${newProblem.partNo}" berhasil ditambahkan!`, 'success');
+        }
+
+        function updateFilterDropdowns() {
+            const vendors = ['ALL', ...new Set(problemsData.map(d => d.vendor))];
+            const vendorFilter = document.getElementById('vendor-filter');
+            const currentVendor = vendorFilter.value;
+            vendorFilter.innerHTML = vendors.map(v => 
+                `<option value="${v}" ${v === currentVendor ? 'selected' : ''}>${v === 'ALL' ? 'All Vendors' : v}</option>`
+            ).join('');
+            
+            const pics = ['ALL', ...new Set(problemsData.map(d => d.pic))];
+            const picFilter = document.getElementById('pic-filter');
+            const currentPIC = picFilter.value;
+            picFilter.innerHTML = pics.map(p => 
+                `<option value="${p}" ${p === currentPIC ? 'selected' : ''}>${p === 'ALL' ? 'All PICs' : p}</option>`
+            ).join('');
+        }
+
+        function toggleExportMenu() {
+            const menu = document.getElementById('export-menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('export-menu');
+            const btn = document.getElementById('export-btn');
+            if (menu && !menu.contains(event.target) && !btn.contains(event.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
+        function exportToExcel() {
+            const menu = document.getElementById('export-menu');
+            menu.style.display = 'none';
+
+            const statusFilter = document.getElementById('status-filter').value;
+            const vendorFilter = document.getElementById('vendor-filter').value;
+            const picFilter = document.getElementById('pic-filter').value;
+            
+            let filename = 'Welding_Problems';
+            if (statusFilter !== 'ALL') filename += `_${statusFilter}`;
+            if (vendorFilter !== 'ALL') filename += `_${vendorFilter}`;
+            if (picFilter !== 'ALL') filename += `_${picFilter}`;
+            filename += `_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+            const excelData = currentFilteredData.map(item => ({
+                'Date': new Date(item.date).toLocaleDateString('id-ID'),
+                'Part No': item.partNo,
+                'Part Name': item.partName,
+                'Vendor': item.vendor,
+                'Problem': item.problem,
+                'Location': item.location,
+                'OK': item.ok,
+                'NG': item.ng,
+                'Defect Rate (%)': ((item.ng / (item.ok + item.ng)) * 100).toFixed(2),
+                'Priority': getPriorityText(item.ng, item.ok + item.ng),
+                'PIC': item.pic,
+                'Status': item.status,
+                'Action': item.action
+            }));
+
+            const totalOK = currentFilteredData.reduce((sum, item) => sum + item.ok, 0);
+            const totalNG = currentFilteredData.reduce((sum, item) => sum + item.ng, 0);
+            const overallDefectRate = ((totalNG / (totalOK + totalNG)) * 100).toFixed(2);
+
+            excelData.push({});
+            excelData.push({
+                'Date': 'SUMMARY',
+                'Part No': '',
+                'Part Name': `Total Problems: ${currentFilteredData.length}`,
+                'Vendor': '',
+                'Problem': '',
+                'Location': '',
+                'OK': totalOK,
+                'NG': totalNG,
+                'Defect Rate (%)': overallDefectRate,
+                'Priority': '',
+                'PIC': '',
+                'Status': '',
+                'Action': ''
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(excelData);
+
+            ws['!cols'] = [
+                {wch: 12}, {wch: 15}, {wch: 25}, {wch: 12}, {wch: 20}, {wch: 15},
+                {wch: 8}, {wch: 8}, {wch: 14}, {wch: 10}, {wch: 10}, {wch: 12}, {wch: 12}
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Welding Problems");
+            XLSX.writeFile(wb, filename);
+
+            showNotification('Excel file downloaded successfully!', 'success');
+        }
+
+        function exportToPDF() {
+            const menu = document.getElementById('export-menu');
+            menu.style.display = 'none';
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+
+            const statusFilter = document.getElementById('status-filter').value;
+            const vendorFilter = document.getElementById('vendor-filter').value;
+            const picFilter = document.getElementById('pic-filter').value;
+            
+            let filename = 'Welding_Problems';
+            if (statusFilter !== 'ALL') filename += `_${statusFilter}`;
+            if (vendorFilter !== 'ALL') filename += `_${vendorFilter}`;
+            if (picFilter !== 'ALL') filename += `_${picFilter}`;
+            filename += `_${new Date().toISOString().split('T')[0]}.pdf`;
+
+            doc.setFontSize(18);
+            doc.setTextColor(40, 40, 40);
+            doc.text('Welding Quality Control Report', 14, 15);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            let filterText = 'Filters: ';
+            if (statusFilter !== 'ALL') filterText += `Status: ${statusFilter} | `;
+            if (vendorFilter !== 'ALL') filterText += `Vendor: ${vendorFilter} | `;
+            if (picFilter !== 'ALL') filterText += `PIC: ${picFilter} | `;
+            filterText += `Date: ${new Date().toLocaleDateString('id-ID')}`;
+            doc.text(filterText, 14, 22);
+
+            const totalOK = currentFilteredData.reduce((sum, item) => sum + item.ok, 0);
+            const totalNG = currentFilteredData.reduce((sum, item) => sum + item.ng, 0);
+            const overallDefectRate = ((totalNG / (totalOK + totalNG)) * 100).toFixed(2);
+            
+            doc.setFontSize(10);
+            doc.text(`Total Problems: ${currentFilteredData.length} | Total OK: ${totalOK} | Total NG: ${totalNG} | Defect Rate: ${overallDefectRate}%`, 14, 28);
+
+            const tableData = currentFilteredData.map(item => [
+                new Date(item.date).toLocaleDateString('id-ID'),
+                item.partNo,
+                item.partName,
+                item.vendor,
+                item.problem,
+                item.location,
+                item.ok,
+                item.ng,
+                ((item.ng / (item.ok + item.ng)) * 100).toFixed(1) + '%',
+                getPriorityText(item.ng, item.ok + item.ng),
+                item.pic,
+                item.status,
+                item.action
+            ]);
+
+            doc.autoTable({
+                startY: 32,
+                head: [['Date', 'Part No', 'Part Name', 'Vendor', 'Problem', 'Location', 'OK', 'NG', 'Rate', 'Priority', 'PIC', 'Status', 'Action']],
+                body: tableData,
+                styles: { 
+                    fontSize: 7,
+                    cellPadding: 2
+                },
+                headStyles: { 
+                    fillColor: [59, 130, 246],
+                    textColor: 255,
+                    fontStyle: 'bold'
+                },
+                columnStyles: {
+                    0: { cellWidth: 18 }, 1: { cellWidth: 20 }, 2: { cellWidth: 30 }, 3: { cellWidth: 18 },
+                    4: { cellWidth: 25 }, 5: { cellWidth: 22 }, 6: { cellWidth: 12 }, 7: { cellWidth: 12 },
+                    8: { cellWidth: 14 }, 9: { cellWidth: 16 }, 10: { cellWidth: 14 }, 11: { cellWidth: 18 }, 12: { cellWidth: 18 }
+                },
+                didParseCell: function(data) {
+                    if (data.column.index === 9 && data.section === 'body') {
+                        if (data.cell.raw === 'HIGH') {
+                            data.cell.styles.textColor = [239, 68, 68];
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (data.cell.raw === 'MED') {
+                            data.cell.styles.textColor = [245, 158, 11];
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (data.cell.raw === 'LOW') {
+                            data.cell.styles.textColor = [16, 185, 129];
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    }
+                    if (data.column.index === 11 && data.section === 'body') {
+                        if (data.cell.raw === 'SELESAI') {
+                            data.cell.styles.fillColor = [209, 250, 229];
+                            data.cell.styles.textColor = [6, 95, 70];
+                        } else if (data.cell.raw === 'ANALISA') {
+                            data.cell.styles.fillColor = [254, 226, 226];
+                            data.cell.styles.textColor = [153, 27, 27];
+                        } else if (data.cell.raw === 'CONTROL') {
+                            data.cell.styles.fillColor = [254, 243, 199];
+                            data.cell.styles.textColor = [146, 64, 14];
+                        }
+                    }
+                }
+            });
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text(
+                    `Page ${i} of ${pageCount}`,
+                    doc.internal.pageSize.getWidth() / 2,
+                    doc.internal.pageSize.getHeight() - 10,
+                    { align: 'center' }
+                );
+            }
+
+            doc.save(filename);
+            showNotification('PDF file downloaded successfully!', 'success');
+        }
+
+        function getPriorityText(ng, total) {
+            const rate = (ng / total) * 100;
+            if (rate > 15) return 'HIGH';
+            if (rate > 5) return 'MED';
+            return 'LOW';
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } text-white font-semibold`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.5s';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        // ============================================
+        // EDIT & DELETE FUNCTIONS
+        // ============================================
+        
+        function editProblem(index) {
+            const problem = problemsData[index];
+            
+            // Fill edit form
+            document.getElementById('edit-index').value = index;
+            document.getElementById('edit-date').value = problem.date;
+            document.getElementById('edit-partno').value = problem.partNo;
+            document.getElementById('edit-partname').value = problem.partName;
+            document.getElementById('edit-vendor').value = problem.vendor;
+            document.getElementById('edit-problem').value = problem.problem;
+            document.getElementById('edit-location').value = problem.location;
+            document.getElementById('edit-ok').value = problem.ok;
+            document.getElementById('edit-ng').value = problem.ng;
+            document.getElementById('edit-pic').value = problem.pic;
+            document.getElementById('edit-status').value = problem.status;
+            document.getElementById('edit-action').value = problem.action;
+            
+            // Show modal
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function hideEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            document.getElementById('edit-form').reset();
+        }
+
+        async function updateProblem(event) {
+            event.preventDefault();
+            
+            const index = parseInt(document.getElementById('edit-index').value);
+            
+            // Update problem data
+            problemsData[index] = {
+                date: document.getElementById('edit-date').value,
+                partNo: document.getElementById('edit-partno').value,
+                partName: document.getElementById('edit-partname').value,
+                vendor: document.getElementById('edit-vendor').value,
+                problem: document.getElementById('edit-problem').value,
+                location: document.getElementById('edit-location').value,
+                ok: parseInt(document.getElementById('edit-ok').value),
+                ng: parseInt(document.getElementById('edit-ng').value),
+                pic: document.getElementById('edit-pic').value,
+                status: document.getElementById('edit-status').value,
+                action: document.getElementById('edit-action').value
+            };
+            
+            // Save to Firebase
+            await saveData();
+            
+            // Update UI
+            currentFilteredData = problemsData;
+            renderTable(problemsData);
+            updateKPIs(problemsData);
+            updateChartsWithFilteredData(problemsData);
+            updateFilterDropdowns();
+            
+            // Close modal
+            hideEditModal();
+            
+            // Show success
+            showNotification(`Problem "${problemsData[index].partNo}" updated successfully!`, 'success');
+            
+            console.log(`✅ Updated problem at index ${index}`);
+        }
+
+        async function deleteProblem(index) {
+            const problem = problemsData[index];
+            
+            // Confirm deletion
+            if (!confirm(`Are you sure you want to delete this problem?\n\nPart No: ${problem.partNo}\nPart Name: ${problem.partName}\nVendor: ${problem.vendor}`)) {
+                return;
+            }
+            
+            try {
+                // Remove from array
+                problemsData.splice(index, 1);
+                
+                // Save to Firebase
+                await saveData();
+                
+                // Update UI
+                currentFilteredData = problemsData;
+                renderTable(problemsData);
+                updateKPIs(problemsData);
+                updateChartsWithFilteredData(problemsData);
+                updateFilterDropdowns();
+                
+                // Show success
+                showNotification(`Problem "${problem.partNo}" deleted successfully!`, 'success');
+                
+                console.log(`✅ Deleted problem: ${problem.partNo}`);
+            } catch (error) {
+                console.error('Delete error:', error);
+                showNotification('Error deleting problem: ' + error.message, 'error');
+            }
+        }
+
+        // ============================================
+        // IMPORT EXCEL FUNCTIONS
+        // ============================================
+        
+        let importedData = [];
+
+        function showImportModal() {
+            document.getElementById('import-modal').style.display = 'flex';
+            importedData = [];
+            document.getElementById('import-preview').style.display = 'none';
+            document.getElementById('import-confirm-btn').style.display = 'none';
+        }
+
+        function hideImportModal() {
+            document.getElementById('import-modal').style.display = 'none';
+            document.getElementById('excel-file-input').value = '';
+            importedData = [];
+        }
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Get first sheet
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    console.log('Raw Excel data:', jsonData);
+                    
+                    if (jsonData.length === 0) {
+                        showNotification('Excel file is empty!', 'error');
+                        return;
+                    }
+
+                    // Process and validate data
+                    importedData = processExcelData(jsonData);
+                    
+                    if (importedData.length === 0) {
+                        showNotification('No valid data found in Excel!', 'error');
+                        return;
+                    }
+
+                    // Show preview
+                    showImportPreview(importedData);
+                    
+                } catch (error) {
+                    console.error('Error reading Excel:', error);
+                    showNotification('Error reading Excel file: ' + error.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelData(jsonData) {
+            const processed = [];
+            
+            jsonData.forEach((row, index) => {
+                try {
+                    // Flexible column name matching (case-insensitive, with spaces)
+                    const getColumn = (row, names) => {
+                        for (let name of names) {
+                            for (let key in row) {
+                                if (key.toLowerCase().trim() === name.toLowerCase()) {
+                                    return row[key];
+                                }
+                            }
+                        }
+                        return null;
+                    };
+
+                    // Extract data with multiple possible column names
+                    const partNo = getColumn(row, ['Part No', 'PartNo', 'Part Number', 'Part_No']);
+                    const partName = getColumn(row, ['Part Name', 'PartName', 'Part_Name']);
+                    const vendor = getColumn(row, ['Vendor', 'Supplier']);
+                    const problem = getColumn(row, ['Problem', 'Issue', 'Defect']);
+                    const location = getColumn(row, ['Location', 'Lokasi']);
+                    const ok = getColumn(row, ['OK', 'Ok', 'Good']);
+                    const ng = getColumn(row, ['NG', 'Ng', 'Bad', 'Defect']);
+                    const pic = getColumn(row, ['PIC', 'Pic', 'Person', 'Assigned']);
+                    const status = getColumn(row, ['Status', 'State']);
+                    const action = getColumn(row, ['Action', 'Corrective Action']);
+                    let date = getColumn(row, ['Date', 'Tanggal', 'Created']);
+
+                    // Validate required fields
+                    if (!partNo || !partName || !vendor) {
+                        console.warn(`Row ${index + 1} skipped: missing required fields`);
+                        return;
+                    }
+
+                    // Process date
+                    if (!date) {
+                        date = new Date().toISOString().split('T')[0];
+                    } else if (typeof date === 'number') {
+                        // Excel date number to JS date
+                        const excelDate = new Date((date - 25569) * 86400 * 1000);
+                        date = excelDate.toISOString().split('T')[0];
+                    } else if (typeof date === 'string') {
+                        // Try to parse various date formats
+                        const parsedDate = new Date(date);
+                        if (!isNaN(parsedDate)) {
+                            date = parsedDate.toISOString().split('T')[0];
+                        } else {
+                            date = new Date().toISOString().split('T')[0];
+                        }
+                    }
+
+                    // Create problem object
+                    const problemObj = {
+                        date: date,
+                        partNo: String(partNo).trim(),
+                        partName: String(partName).trim(),
+                        vendor: String(vendor || 'N/A').trim(),
+                        problem: String(problem || 'N/A').trim(),
+                        location: String(location || 'N/A').trim(),
+                        ok: parseInt(ok) || 0,
+                        ng: parseInt(ng) || 0,
+                        pic: String(pic || 'N/A').trim(),
+                        status: validateStatus(status),
+                        action: validateAction(action)
+                    };
+
+                    processed.push(problemObj);
+                } catch (error) {
+                    console.error(`Error processing row ${index + 1}:`, error);
+                }
+            });
+
+            return processed;
+        }
+
+        function validateStatus(status) {
+            if (!status) return 'ANALISA';
+            const s = String(status).toUpperCase().trim();
+            if (['ANALISA', 'CONTROL', 'SELESAI'].includes(s)) {
+                return s;
+            }
+            return 'ANALISA';
+        }
+
+        function validateAction(action) {
+            if (!action) return 'REPAIR';
+            const a = String(action).toUpperCase().trim();
+            if (['REPAIR', 'SORTIR', 'REPLACE', 'PACS'].includes(a)) {
+                return a;
+            }
+            return 'REPAIR';
+        }
+
+        function showImportPreview(data) {
+            const previewDiv = document.getElementById('import-preview');
+            const previewBody = document.getElementById('import-preview-body');
+            const countSpan = document.getElementById('import-count');
+            const confirmBtn = document.getElementById('import-confirm-btn');
+            const btnCount = document.getElementById('import-btn-count');
+
+            // Clear previous preview
+            previewBody.innerHTML = '';
+
+            // Show first 10 rows
+            const preview = data.slice(0, 10);
+            preview.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-3 py-2">${item.partNo}</td>
+                    <td class="px-3 py-2">${item.partName}</td>
+                    <td class="px-3 py-2">${item.vendor}</td>
+                    <td class="px-3 py-2">${item.problem}</td>
+                `;
+                previewBody.appendChild(row);
+            });
+
+            countSpan.textContent = data.length;
+            btnCount.textContent = `(${data.length})`;
+            
+            previewDiv.style.display = 'block';
+            confirmBtn.style.display = 'block';
+        }
+
+        async function confirmImport() {
+            if (importedData.length === 0) {
+                showNotification('No data to import!', 'error');
+                return;
+            }
+
+            try {
+                // Add all imported problems to problemsData
+                problemsData.push(...importedData);
+                
+                // Save to Firebase
+                await saveData();
+                
+                // Update UI
+                currentFilteredData = problemsData;
+                renderTable(problemsData);
+                updateKPIs(problemsData);
+                updateChartsWithFilteredData(problemsData);
+                updateFilterDropdowns();
+                
+                // Close modal
+                hideImportModal();
+                
+                // Show success
+                showNotification(`Successfully imported ${importedData.length} problems!`, 'success');
+                
+                console.log(`✅ Imported ${importedData.length} problems from Excel`);
+            } catch (error) {
+                console.error('Import error:', error);
+                showNotification('Error importing data: ' + error.message, 'error');
+            }
+        }
+
+        // Add CSS animation for status dot
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
